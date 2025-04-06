@@ -7,10 +7,10 @@ const lostItemSchema = new mongoose.Schema(
     locationName: String,
     imageUrl: String,
     status: {
-      type: String,
-      enum: ["Pending", "Matched", "Returned"],
-      default: "Pending",
-    },
+        type: String,
+        enum: ["Pending", "Matched", "Returned", "Transferred to NUPD"],
+        default: "Pending"
+      },      
     submittedBy: String,
   },
   { timestamps: true }
