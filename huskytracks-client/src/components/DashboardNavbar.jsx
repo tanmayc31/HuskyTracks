@@ -57,20 +57,21 @@ const DashboardNavbar = ({ role }) => {
   
   // Get appropriate navigation items based on role
   const getNavItems = () => {
-    // Base items for all users
-    const items = [
-      { label: "Dashboard", path: "/dashboard" },
-      { label: "Report Lost Item", path: "/report-lost-item" }
-    ];
-    
-    // Add role-specific items
     if (role === "admin") {
-      items.unshift({ label: "Admin Panel", path: "/admin-dashboard" });
+      return [
+        { label: "Admin Dashboard", path: "/admin-dashboard" }
+      ];
     } else if (role === "supervisor") {
-      items.unshift({ label: "Supervisor Panel", path: "/supervisor-dashboard" });
+      return [
+        { label: "Supervisor Dashboard", path: "/supervisor-dashboard" }
+      ];
+    } else {
+      // Student role
+      return [
+        { label: "Dashboard", path: "/dashboard" },
+        { label: "Report Lost Item", path: "/report-lost-item" }
+      ];
     }
-    
-    return items;
   };
   
   const navItems = getNavItems();
@@ -108,7 +109,16 @@ const DashboardNavbar = ({ role }) => {
                   transform: "scale(1.05)"
                 }
               }}
-              onClick={() => navigate("/dashboard")}
+              onClick={() => {
+                // Navigate to the appropriate dashboard based on role
+                if (role === "admin") {
+                  navigate("/admin-dashboard");
+                } else if (role === "supervisor") {
+                  navigate("/supervisor-dashboard");
+                } else {
+                  navigate("/dashboard");
+                }
+              }}
             >
               <Box
                 component="img"
@@ -143,7 +153,7 @@ const DashboardNavbar = ({ role }) => {
                       letterSpacing: "1px"
                     }}
                   >
-                    {role.charAt(0).toUpperCase() + role.slice(1)} Dashboard
+                    {role.charAt(0).toUpperCase() + role.slice(1)} Portal
                   </Typography>
                 )}
               </Box>
