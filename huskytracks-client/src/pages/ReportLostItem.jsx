@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Typography,
@@ -12,8 +12,10 @@ import {
   IconButton
 } from "@mui/material";
 import DashboardNavbar from "../components/DashboardNavbar";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import DeleteIcon from '@mui/icons-material/Delete';
+import Footer1 from "../components/Footer1";
 
 const locations = [
   "Snell Library",
@@ -23,9 +25,20 @@ const locations = [
   "Ryder Hall",
 ];
 
+const categories = [
+  "Electronics",
+  "Books & Notes",
+  "Clothing & Accessories",
+  "Keys & ID Cards",
+  "Water Bottles & Containers",
+  "Other"
+];
+
 const ReportLostItem = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     title: "",
+    category: "",
     description: "",
     locationName: "",
     image: null,
@@ -34,6 +47,13 @@ const ReportLostItem = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const user = JSON.parse(localStorage.getItem("huskyUser"));
+
+  useEffect(() => {
+    // Redirect to login if not logged in
+    if (!user || !user.email) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -59,12 +79,17 @@ const ReportLostItem = () => {
     e.preventDefault();
 
     if (!form.title || !form.description || !form.locationName || !form.image) {
-      return setError("Please fill in all fields and upload an image.");
+      return setError("Please fill in all required fields and upload an image.");
+    }
+
+    if (!form.category) {
+      return setError("Please select a category for the lost item.");
     }
 
     try {
       const formData = new FormData();
       formData.append("title", form.title);
+      formData.append("category", form.category);
       formData.append("description", form.description);
       formData.append("locationName", form.locationName);
       formData.append("image", form.image);
@@ -74,18 +99,23 @@ const ReportLostItem = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setSuccess("Lost item reported successfully!");
-      setForm({ title: "", description: "", locationName: "", image: null });
+      setSuccess("Lost item reported successfully! You will be notified if someone finds it.");
+      setForm({ title: "", category: "", description: "", locationName: "", image: null });
       setPreview(null);
+      
+      // After 2 seconds, redirect to dashboard
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
     } catch (err) {
-      setError("Failed to submit lost item. Try again.");
+      setError("Failed to submit lost item. Please try again.");
     }
   };
 
   return (
     <>
       <DashboardNavbar role="student" />
-      <Container maxWidth="sm" sx={{ mt: 6, mb: 6 }}>
+      <Container maxWidth="sm" sx={{ mt: 4, mb: 6 }}>
         <Paper
           elevation={4}
           sx={{
@@ -116,7 +146,25 @@ const ReportLostItem = () => {
                 variant="outlined"
                 value={form.title}
                 onChange={handleChange}
+                required
               />
+              
+              <TextField
+                select
+                label="Category"
+                name="category"
+                fullWidth
+                value={form.category}
+                onChange={handleChange}
+                required
+              >
+                {categories.map((category) => (
+                  <MenuItem key={category} value={category}>
+                    {category}
+                  </MenuItem>
+                ))}
+              </TextField>
+              
               <TextField
                 label="Description"
                 name="description"
@@ -126,14 +174,18 @@ const ReportLostItem = () => {
                 variant="outlined"
                 value={form.description}
                 onChange={handleChange}
+                required
+                placeholder="Please describe your item in detail (color, brand, any distinctive features, etc.)"
               />
+              
               <TextField
                 select
-                label="Location"
+                label="Last Seen Location"
                 name="locationName"
                 fullWidth
                 value={form.locationName}
                 onChange={handleChange}
+                required
               >
                 {locations.map((loc) => (
                   <MenuItem key={loc} value={loc}>
@@ -152,9 +204,10 @@ const ReportLostItem = () => {
                     borderRadius: 2,
                     textTransform: "none",
                     fontWeight: 600,
+                    py: 1.2
                   }}
                 >
-                  Upload Image
+                  {preview ? "Change Image" : "Upload Image"}
                   <input hidden type="file" accept="image/*" onChange={handleImageChange} />
                 </Button>
                 {preview && (
@@ -193,13 +246,14 @@ const ReportLostItem = () => {
                     borderRadius: 2,
                     textTransform: "none",
                     flex: 1,
+                    py: 1.2
                   }}
                 >
                   Submit Report
                 </Button>
                 <Button
                   variant="outlined"
-                  href="/dashboard"
+                  onClick={() => navigate('/dashboard')}
                   sx={{
                     borderColor: "#b00020",
                     color: "#b00020",
@@ -220,6 +274,7 @@ const ReportLostItem = () => {
           </form>
         </Paper>
       </Container>
+      <Footer1 />
     </>
   );
 };

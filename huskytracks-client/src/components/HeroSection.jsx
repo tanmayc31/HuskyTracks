@@ -13,7 +13,7 @@ const HeroSection = () => {
     <Box 
       sx={{ 
         position: "relative", 
-        height: "100vh",
+        height: "92vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -59,7 +59,7 @@ const HeroSection = () => {
           className="glass-card"
           sx={{ 
             maxWidth: 900,
-            marginTop: "60px",
+            // marginTop: "60px",
             width: "100%", 
             mx: "auto",
             p: { xs: 3, sm: 5, md: 6 },

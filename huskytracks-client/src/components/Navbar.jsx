@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import MenuIcon from '@mui/icons-material/Menu';
+import HomeIcon from '@mui/icons-material/Home';
 import huskyLogo from "../assets/HuskyLOGO.png"; // Make sure this path is correct
 
 const Navbar = () => {
@@ -60,14 +61,20 @@ const Navbar = () => {
   };
 
   return (
-    <Slide appear={false} direction="down" in={!scrolled}>
+    <>
+      {/* Navbar placeholder - to hold space for the fixed navbar */}
+      <Box sx={{ height: { xs: '64px', md: '70px' } }} />
+      
+      {/* Actual navbar */}
       <AppBar 
         position="fixed" 
         elevation={scrolled ? 4 : 0}
         sx={{ 
           backgroundColor: scrolled ? 'rgba(176, 0, 32, 0.95)' : 'rgba(176, 0, 32, 0.85)',
           backdropFilter: "blur(8px)",
-          transition: "all 0.3s ease"
+          transition: "all 0.3s ease",
+          top: 0,
+          zIndex: 1100
         }}
       >
         <Container maxWidth="xl" sx={{ px: { xs: 2, md: 4 } }}>
@@ -112,9 +119,37 @@ const Navbar = () => {
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <Button 
                   color="inherit" 
+                  startIcon={<HomeIcon />}
+                  onClick={() => navigate("/")}
+                  sx={{ 
+                    fontWeight: location.pathname === "/" ? 700 : 500,
+                    position: "relative",
+                    overflow: "hidden",
+                    "&::before": {
+                      content: '""',
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "2px",
+                      backgroundColor: "white",
+                      transform: location.pathname === "/" ? "scaleX(1)" : "scaleX(0)",
+                      transformOrigin: "right",
+                      transition: "transform 0.3s ease"
+                    },
+                    "&:hover::before": {
+                      transform: "scaleX(1)",
+                      transformOrigin: "left"
+                    }
+                  }}
+                >
+                  Home
+                </Button>
+                <Button 
+                  color="inherit" 
                   onClick={() => navigate("/about-us")}
                   sx={{ 
-                    fontWeight: 500,
+                    fontWeight: location.pathname === "/about-us" ? 700 : 500,
                     position: "relative",
                     overflow: "hidden",
                     "&::before": {
@@ -141,7 +176,7 @@ const Navbar = () => {
                   color="inherit" 
                   onClick={() => navigate("/contact-us")}
                   sx={{ 
-                    fontWeight: 500,
+                    fontWeight: location.pathname === "/contact-us" ? 700 : 500,
                     position: "relative",
                     overflow: "hidden",
                     "&::before": {
@@ -256,6 +291,7 @@ const Navbar = () => {
                       }
                     }}
                   >
+                    <HomeIcon sx={{ mr: 1, fontSize: "1.25rem" }} />
                     <Typography sx={{ fontWeight: location.pathname === "/" ? 600 : 400 }}>
                       Home
                     </Typography>
@@ -310,7 +346,7 @@ const Navbar = () => {
           </Toolbar>
         </Container>
       </AppBar>
-    </Slide>
+    </>
   );
 };
 
