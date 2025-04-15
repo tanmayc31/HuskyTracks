@@ -1,141 +1,115 @@
-const express = require("express");
+import express from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import LostItem from "../models/LostItem.js";
+
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const LostItem = require("../models/LostItem");
 
-// Configure multer for image uploads
+// ✅ Multer config
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
+  destination: function (req, file, cb) {
+    const dir = "./uploads";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    cb(null, dir);
   },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowedFileTypes = /jpeg|jpg|png/;
-    const extname = allowedFileTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedFileTypes.test(file.mimetype);
-
-    if (extname && mimetype) {
-      return cb(null, true);
-    } else {
-      cb("Error: Only JPEG, JPG, and PNG images are allowed!");
-    }
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
   },
 });
+const upload = multer({ storage });
 
-// Path to default image
-const DEFAULT_IMAGE_PATH = path.join(__dirname, "../uploads/defaults/default-item.png");
-
-// GET all lost items
-router.get("/", async (req, res) => {
-  try {
-    const { email } = req.query;
-    let items;
-
-    if (email) {
-      items = await LostItem.find({ submittedBy: email });
-    } else {
-      items = await LostItem.find();
-    }
-
-    res.json(items);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// GET lost items by location (for supervisors)
-router.get("/supervisor", async (req, res) => {
-  try {
-    const { location } = req.query;
-    const items = await LostItem.find({ locationName: location });
-    res.json(items);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// POST a new lost item
+// ✅ 1. Student reports lost item
 router.post("/", upload.single("image"), async (req, res) => {
   try {
-    const { title, description, locationName, submittedBy, category } = req.body;
-    
-    let imageUrl;
-    
-    // If an image was uploaded, use it
-    if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
-    } 
-    // Otherwise, use the default image
-    else {
-      // Create a copy of the default in the uploads folder with unique name
-      const uniqueFilename = `default-${Date.now()}.png`;
-      const destinationPath = path.join(__dirname, "../uploads", uniqueFilename);
-      
-      // Check if defaults directory exists, create it if it doesn't
-      const defaultsDir = path.dirname(DEFAULT_IMAGE_PATH);
-      if (!fs.existsSync(defaultsDir)) {
-        fs.mkdirSync(defaultsDir, { recursive: true });
+    const { title, description, coordinates, submittedBy } = req.body;
+    const imageUrl = req.file ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}` : null;
+
+    // Parse coordinates from string to array
+    let parsedCoordinates;
+    try {
+      parsedCoordinates = JSON.parse(coordinates);
+      if (!Array.isArray(parsedCoordinates) || parsedCoordinates.length !== 2) {
+        throw new Error('Invalid coordinates format');
       }
-      
-      // If default image doesn't exist yet, create a placeholder
-      if (!fs.existsSync(DEFAULT_IMAGE_PATH)) {
-        // Create basic placeholder image directory
-        console.log("Default image not found, using system placeholder");
-        // You could implement a fallback here if needed
-        imageUrl = "/uploads/placeholder.png"; // This should be a pre-existing file in your system
-      } else {
-        // Copy the default image
-        fs.copyFileSync(DEFAULT_IMAGE_PATH, destinationPath);
-        imageUrl = `/uploads/${uniqueFilename}`;
-      }
+    } catch (error) {
+      return res.status(400).json({ message: "Invalid coordinates format" });
     }
 
-    const newLostItem = new LostItem({
+    const newItem = new LostItem({
       title,
       description,
-      locationName,
-      imageUrl,
+      coordinates: parsedCoordinates,
       submittedBy,
-      category,
-      status: "Pending", // Default status
+      imageUrl,
+      status: "Pending",
     });
 
-    const savedItem = await newLostItem.save();
-    res.status(201).json(savedItem);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    await newItem.save();
+    res.status(201).json({ message: "Lost item reported!", item: newItem });
+  } catch (error) {
+    console.error("❌ Error saving lost item:", error);
+    res.status(500).json({ message: "Failed to save lost item", error });
   }
 });
 
-// PATCH (update) a lost item status
-router.patch("/:id", async (req, res) => {
+// ✅ 2. Get lost items by student
+router.get("/", async (req, res) => {
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ message: "Email is required" });
+
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const items = await LostItem.find({ submittedBy: email }).sort({ createdAt: -1 });
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch lost items", error });
+  }
+});
 
-    const updatedItem = await LostItem.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
+// ✅ 3. Get lost items for supervisor
+router.get("/supervisor", async (req, res) => {
+  const { bounds } = req.query;
+  if (!bounds) {
+    return res.status(400).json({ message: "Map bounds are required" });
+  }
 
-    if (!updatedItem) {
+  try {
+    // Parse bounds from string to object
+    const { north, south, east, west } = JSON.parse(bounds);
+
+    // Find items within the bounds
+    const items = await LostItem.find({
+      'coordinates.0': { $gte: west, $lte: east },
+      'coordinates.1': { $gte: south, $lte: north }
+    }).sort({ createdAt: -1 });
+
+    res.json(items);
+  } catch (error) {
+    console.error("❌ Error fetching supervisor items:", error);
+    res.status(500).json({ message: "Failed to fetch items", error });
+  }
+});
+
+// ✅ 4. Update status
+router.patch("/:id", async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!["Pending", "Matched", "Returned", "Transferred to NUPD"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status value" });
+  }
+
+  try {
+    const item = await LostItem.findByIdAndUpdate(id, { status }, { new: true });
+    if (!item) {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    res.json(updatedItem);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.json({ message: "Status updated", item });
+  } catch (error) {
+    console.error("❌ Failed to update item status:", error);
+    res.status(500).json({ message: "Error updating item", error });
   }
 });
 
-module.exports = router;
+export default router;

@@ -16,21 +16,12 @@ import {
   Select
 } from "@mui/material";
 import DashboardNavbar from "../components/DashboardNavbar";
+import LocationPicker from "../components/LocationPicker";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import DeleteIcon from '@mui/icons-material/Delete';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import Footer1 from "../components/Footer1";
-
-// Predefined locations
-const locations = [
-  "Snell Library",
-  "Curry Student Center",
-  "ISEC",
-  "Egan Research Center",
-  "Ryder Hall",
-  "Other"
-];
 
 // Predefined categories
 const categories = [
@@ -48,8 +39,7 @@ const ReportLostItem = () => {
     title: "",
     category: "",
     description: "",
-    locationName: "",
-    otherLocation: "",
+    coordinates: null,
     image: null,
   });
   
@@ -58,8 +48,7 @@ const ReportLostItem = () => {
     title: "",
     category: "",
     description: "",
-    locationName: "",
-    otherLocation: ""
+    coordinates: "",
   });
   
   // Form touched state
@@ -67,8 +56,7 @@ const ReportLostItem = () => {
     title: false,
     category: false,
     description: false,
-    locationName: false,
-    otherLocation: false
+    coordinates: false,
   });
   
   const [preview, setPreview] = useState(null);
@@ -97,6 +85,15 @@ const ReportLostItem = () => {
     
     // Live validation
     validateField(name, value);
+  };
+
+  // Handle location selection
+  const handleLocationSelect = (coordinates) => {
+    setForm(prev => ({ ...prev, coordinates }));
+    if (!touched.coordinates) {
+      setTouched(prev => ({ ...prev, coordinates: true }));
+    }
+    validateField('coordinates', coordinates);
   };
 
   // Handle blur event for validation
@@ -133,15 +130,9 @@ const ReportLostItem = () => {
         }
         break;
         
-      case "locationName":
-        if (!value) {
-          error = "Please select a location";
-        }
-        break;
-        
-      case "otherLocation":
-        if (form.locationName === "Other" && !value.trim()) {
-          error = "Please specify the location";
+      case "coordinates":
+        if (!value || !Array.isArray(value) || value.length !== 2) {
+          error = "Please select a location on the map";
         }
         break;
         
@@ -158,14 +149,8 @@ const ReportLostItem = () => {
     let isValid = true;
     
     // Validate each field
-    for (const field of ["title", "category", "description", "locationName"]) {
+    for (const field of ["title", "category", "description", "coordinates"]) {
       const error = validateField(field, form[field]);
-      if (error) isValid = false;
-    }
-    
-    // Validate "Other" location if selected
-    if (form.locationName === "Other") {
-      const error = validateField("otherLocation", form.otherLocation);
       if (error) isValid = false;
     }
     
@@ -218,13 +203,7 @@ const ReportLostItem = () => {
       formData.append("title", form.title);
       formData.append("category", form.category);
       formData.append("description", form.description);
-      
-      // Handle location - use otherLocation if "Other" is selected
-      if (form.locationName === "Other") {
-        formData.append("locationName", form.otherLocation);
-      } else {
-        formData.append("locationName", form.locationName);
-      }
+      formData.append("coordinates", JSON.stringify(form.coordinates));
       
       // Append image if provided, otherwise backend will use default
       if (form.image) {
@@ -238,7 +217,7 @@ const ReportLostItem = () => {
       });
 
       setSuccess("Lost item reported successfully! You will be notified if someone finds it.");
-      setForm({ title: "", category: "", description: "", locationName: "", otherLocation: "", image: null });
+      setForm({ title: "", category: "", description: "", coordinates: null, image: null });
       setPreview(null);
       
       // After 2 seconds, redirect to dashboard
@@ -255,55 +234,45 @@ const ReportLostItem = () => {
   return (
     <>
       <DashboardNavbar role="student" />
-      <Container maxWidth="sm" sx={{ mt: 4, mb: 6 }}>
-        <Paper
-          elevation={4}
-          sx={{
-            p: 5,
-            borderRadius: 4,
-            backgroundColor: "#ffffff",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.08)",
-          }}
-        >
-          <Typography
-            variant="h4"
-            sx={{
-              color: "#b00020",
-              fontWeight: "bold",
-              mb: 3,
-              textAlign: "center",
-            }}
-          >
-            Report Lost Item
-          </Typography>
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Typography variant="h4" gutterBottom fontWeight={700}>
+          Report Lost Item
+        </Typography>
 
+        {formError && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {formError}
+          </Alert>
+        )}
+
+        {success && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {success}
+          </Alert>
+        )}
+
+        <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
           <form onSubmit={handleSubmit}>
             <Stack spacing={3}>
-              {/* Title Field with validation */}
               <TextField
-                label="Item Title *"
+                label="Item Title"
                 name="title"
-                fullWidth
-                variant="outlined"
                 value={form.title}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 error={touched.title && Boolean(errors.title)}
                 helperText={touched.title && errors.title}
-                inputProps={{ maxLength: 50 }}
+                required
               />
-              
-              {/* Category Field with validation */}
-              <FormControl fullWidth error={touched.category && Boolean(errors.category)}>
-                <InputLabel id="category-label">Category *</InputLabel>
+
+              <FormControl error={touched.category && Boolean(errors.category)}>
+                <InputLabel>Category *</InputLabel>
                 <Select
-                  labelId="category-label"
-                  id="category"
                   name="category"
                   value={form.category}
-                  label="Category *"
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  label="Category *"
                 >
                   {categories.map((cat) => (
                     <MenuItem key={cat} value={cat}>
@@ -315,146 +284,86 @@ const ReportLostItem = () => {
                   <FormHelperText>{errors.category}</FormHelperText>
                 )}
               </FormControl>
-              
-              {/* Description Field with validation */}
+
               <TextField
-                label="Description *"
+                label="Description"
                 name="description"
-                fullWidth
-                multiline
-                rows={4}
-                variant="outlined"
                 value={form.description}
                 onChange={handleChange}
                 onBlur={handleBlur}
+                multiline
+                rows={4}
                 error={touched.description && Boolean(errors.description)}
-                helperText={
-                  (touched.description && errors.description) || 
-                  "Please describe your item in detail (color, brand, any distinctive features, etc.)"
-                }
-                inputProps={{ maxLength: 500 }}
+                helperText={touched.description && errors.description}
+                required
               />
-              
-              {/* Location Field with validation */}
-              <FormControl fullWidth error={touched.locationName && Boolean(errors.locationName)}>
-                <InputLabel id="location-label">Last Seen Location *</InputLabel>
-                <Select
-                  labelId="location-label"
-                  id="locationName"
-                  name="locationName"
-                  value={form.locationName}
-                  label="Last Seen Location *"
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                >
-                  {locations.map((loc) => (
-                    <MenuItem key={loc} value={loc}>
-                      {loc}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {touched.locationName && errors.locationName && (
-                  <FormHelperText>{errors.locationName}</FormHelperText>
-                )}
-              </FormControl>
-              
-              {/* Other Location Field (conditionally displayed) */}
-              {form.locationName === "Other" && (
-                <TextField
-                  label="Specify Location *"
-                  name="otherLocation"
-                  fullWidth
-                  variant="outlined"
-                  value={form.otherLocation}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  error={touched.otherLocation && Boolean(errors.otherLocation)}
-                  helperText={touched.otherLocation && errors.otherLocation}
-                />
-              )}
 
-              {/* Image Upload (Optional) */}
               <Box>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                  Image (Optional) - If not provided, a default image will be used
+                <Typography variant="subtitle1" gutterBottom>
+                  Select Location *
                 </Typography>
-                <Button
-                  component="label"
-                  variant="contained"
-                  startIcon={<PhotoCameraIcon />}
-                  fullWidth
-                  sx={{
-                    backgroundColor: preview ? "#4caf50" : "#b00020",
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 600,
-                    py: 1.2
-                  }}
-                >
-                  {preview ? "Change Image" : "Upload Image"}
-                  <input hidden type="file" accept="image/*" onChange={handleImageChange} />
-                </Button>
+                <LocationPicker
+                  onLocationSelect={handleLocationSelect}
+                  initialCoordinates={form.coordinates}
+                />
+                {touched.coordinates && errors.coordinates && (
+                  <FormHelperText error>{errors.coordinates}</FormHelperText>
+                )}
+              </Box>
+
+              <Box>
+                <input
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  id="image-upload"
+                  type="file"
+                  onChange={handleImageChange}
+                />
+                <label htmlFor="image-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<PhotoCameraIcon />}
+                  >
+                    Upload Image
+                  </Button>
+                </label>
+
                 {preview && (
-                  <Box mt={2} position="relative">
+                  <Box sx={{ mt: 2, position: "relative", display: "inline-block" }}>
                     <img
                       src={preview}
                       alt="Preview"
-                      style={{ borderRadius: "10px", width: "100%", boxShadow: "0 4px 10px rgba(0,0,0,0.1)" }}
+                      style={{ maxWidth: "200px", maxHeight: "200px", borderRadius: "4px" }}
                     />
                     <IconButton
                       onClick={handleRemoveImage}
                       sx={{
                         position: "absolute",
-                        top: 8,
-                        right: 8,
-                        backgroundColor: "rgba(255,255,255,0.8)",
-                        "&:hover": { backgroundColor: "#ffcccc" },
+                        top: -8,
+                        right: -8,
+                        backgroundColor: "white",
+                        "&:hover": { backgroundColor: "#f5f5f5" },
                       }}
                     >
-                      <DeleteIcon color="error" />
+                      <DeleteIcon />
                     </IconButton>
                   </Box>
                 )}
               </Box>
 
-              {formError && <Alert severity="error">{formError}</Alert>}
-              {success && <Alert severity="success">{success}</Alert>}
-
-              <Stack direction="row" spacing={2}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={submitting}
-                  sx={{
-                    backgroundColor: "#b00020",
-                    fontWeight: 600,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    flex: 1,
-                    py: 1.2
-                  }}
-                >
-                  {submitting ? "Submitting..." : "Submit Report"}
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => navigate('/dashboard')}
-                  sx={{
-                    borderColor: "#b00020",
-                    color: "#b00020",
-                    fontWeight: 600,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    flex: 1,
-                    "&:hover": {
-                      backgroundColor: "#ffe5e5",
-                      borderColor: "#b00020",
-                    },
-                  }}
-                >
-                  Cancel
-                </Button>
-              </Stack>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={submitting}
+                sx={{
+                  backgroundColor: "#b00020",
+                  "&:hover": { backgroundColor: "#900018" },
+                  fontWeight: 600,
+                }}
+              >
+                {submitting ? "Submitting..." : "Submit Report"}
+              </Button>
             </Stack>
           </form>
         </Paper>
