@@ -25,12 +25,14 @@ import Footer1 from "../components/Footer1";
 
 // Predefined categories
 const categories = [
-  "Electronics",
-  "Books & Notes",
-  "Clothing & Accessories",
-  "Keys & ID Cards",
-  "Water Bottles & Containers",
-  "Other"
+  "Electronics & Gadgets",
+  "Bags & Accessories",
+  "Clothing & Wearables",
+  "Books & Stationery",
+  "IDs & Cards",
+  "Keys & Locks",
+  "Personal Items",
+  "Pets or Living Things"
 ];
 
 const ReportLostItem = () => {

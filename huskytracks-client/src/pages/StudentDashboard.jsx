@@ -52,8 +52,9 @@ const StudentDashboard = () => {
 
   const userString = localStorage.getItem("huskyUser");
   const user = userString ? JSON.parse(userString) : null;
-
+  
   useEffect(() => {
+    
     if (!user || !user.email) {
       navigate("/login");
       return;
@@ -70,13 +71,14 @@ const StudentDashboard = () => {
           setError(null);
           setIsDataLoaded(true);
         } catch (err) {
-          console.error("Failed to load items", err);
           setError("Failed to load your items. Please try again later.");
           setItems([]);
           setFilteredItems([]);
         } finally {
           setLoading(false);
         }
+      } else {
+        console.log('Items already loaded, skipping fetch');
       }
     };
 
@@ -89,11 +91,25 @@ const StudentDashboard = () => {
     }
   }, [searchTerm, categoryFilter, statusFilter, sortOption]);
 
-  const handleSearch = (event) => setSearchTerm(event.target.value);
-  const handleCategoryChange = (event) => setCategoryFilter(event.target.value);
-  const handleStatusChange = (event) => setStatusFilter(event.target.value);
-  const handleSortChange = (event) => setSortOption(event.target.value);
-  const handleTabChange = (event, newValue) => setTabValue(newValue);
+  const handleSearch = (event) => {
+    setSearchTerm(event.target.value);
+  };
+  
+  const handleCategoryChange = (event) => {
+    setCategoryFilter(event.target.value);
+  };
+  
+  const handleStatusChange = (event) => {
+    setStatusFilter(event.target.value);
+  };
+  
+  const handleSortChange = (event) => {
+    setSortOption(event.target.value);
+  };
+  
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
 
   // Handle selection of an item
   const handleItemClick = (item) => {
@@ -101,10 +117,19 @@ const StudentDashboard = () => {
     // Scroll to map section when an item is selected
     if (mapSectionRef.current) {
       mapSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      console.warn('Map section ref is null!');
     }
   };
 
   const applyFilters = () => {
+    console.log('Applying filters with:', {
+      searchTerm,
+      categoryFilter,
+      statusFilter,
+      sortOption
+    });
+    
     let result = [...items];
     const lowerSearch = searchTerm.toLowerCase();
 
@@ -139,6 +164,43 @@ const StudentDashboard = () => {
       setSelectedItem(null);
     }
   };
+
+  // Add a useEffect to specifically debug the map section
+  useEffect(() => {
+    if (mapSectionRef.current) {
+      const mapSection = mapSectionRef.current;
+      const rect = mapSection.getBoundingClientRect();
+      console.log('Map section dimensions:', {
+        width: rect.width,
+        height: rect.height,
+        top: rect.top,
+        left: rect.left,
+        bottom: rect.bottom,
+        right: rect.right,
+        visibility: window.getComputedStyle(mapSection).visibility,
+        display: window.getComputedStyle(mapSection).display,
+        overflow: window.getComputedStyle(mapSection).overflow,
+      });
+      
+      // Check children
+      console.log('Map section children:', mapSection.children.length);
+      
+      // Force layout recalculation
+      setTimeout(() => {
+        const leafletContainer = mapSection.querySelector('.leaflet-container');
+        if (leafletContainer) {
+          console.log('Leaflet container found in map section:', {
+            width: leafletContainer.offsetWidth,
+            height: leafletContainer.offsetHeight,
+          });
+        } else {
+          console.warn('Leaflet container not found in map section!');
+        }
+      }, 100);
+    } else {
+      console.warn('Map section ref is null!');
+    }
+  }, []);
 
   const uniqueCategories = useMemo(() => {
     return ["All", ...new Set(items.map(item => item.category).filter(Boolean))];
@@ -177,7 +239,15 @@ const StudentDashboard = () => {
           </Button>
         </Box>
 
-        <Box sx={{ mb: 4 }} ref={mapSectionRef}>
+        <Box 
+          sx={{ mb: 4, position: 'relative' }} 
+          ref={(el) => {
+            mapSectionRef.current = el;
+          }}
+        >
+          <div style={{ position: 'absolute', top: -20, right: 0, zIndex: 1000, background: 'rgba(255,255,255,0.7)', padding: '5px', fontSize: '12px' }}>
+            Items to show: {itemsToShow.length} | Selected: {selectedItem ? selectedItem._id : 'none'}
+          </div>
           <LostItemsMap 
             items={itemsToShow} 
             selectedItem={selectedItem}
