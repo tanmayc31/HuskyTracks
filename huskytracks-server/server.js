@@ -8,10 +8,7 @@ import lostItemRoutes from "./routes/lostItemRoutes.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import sendMatchEmailRoute from "./routes/sendMatchEmailRoute.js";
-
-
-
-
+import adminRoutes from "./routes/adminRoutes.js";
 
 
 
@@ -28,6 +25,8 @@ app.use("/api", authRoutes);
 app.use("/api", testUserRoutes);
 app.use("/api/lost-items", lostItemRoutes);
 app.use("/api", sendMatchEmailRoute);
+app.use("/api/admin", adminRoutes);
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
