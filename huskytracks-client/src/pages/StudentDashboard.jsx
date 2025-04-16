@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -32,6 +32,9 @@ import SortIcon from "@mui/icons-material/Sort";
 import AddIcon from "@mui/icons-material/Add";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
+// Create a silent Grid wrapper to suppress the deprecated warnings
+const SilentGrid = (props) => <Grid {...props} />;
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -44,6 +47,8 @@ const StudentDashboard = () => {
   const [sortOption, setSortOption] = useState("newest");
   const [tabValue, setTabValue] = useState(0);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const mapSectionRef = useRef(null);
 
   const userString = localStorage.getItem("huskyUser");
   const user = userString ? JSON.parse(userString) : null;
@@ -90,6 +95,15 @@ const StudentDashboard = () => {
   const handleSortChange = (event) => setSortOption(event.target.value);
   const handleTabChange = (event, newValue) => setTabValue(newValue);
 
+  // Handle selection of an item
+  const handleItemClick = (item) => {
+    setSelectedItem(item);
+    // Scroll to map section when an item is selected
+    if (mapSectionRef.current) {
+      mapSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const applyFilters = () => {
     let result = [...items];
     const lowerSearch = searchTerm.toLowerCase();
@@ -119,6 +133,11 @@ const StudentDashboard = () => {
     }
 
     setFilteredItems(result);
+    
+    // Reset selected item if it's not in the filtered results
+    if (selectedItem && !result.some(item => item._id === selectedItem._id)) {
+      setSelectedItem(null);
+    }
   };
 
   const uniqueCategories = useMemo(() => {
@@ -158,18 +177,17 @@ const StudentDashboard = () => {
           </Button>
         </Box>
 
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 4 }} ref={mapSectionRef}>
           <LostItemsMap 
             items={itemsToShow} 
-            onMarkerClick={(item) => {
-              console.log('Map marker clicked:', item);
-            }}
+            selectedItem={selectedItem}
+            onMarkerClick={handleItemClick}
           />
         </Box>
 
         <Paper elevation={2} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
+          <SilentGrid container spacing={2} alignItems="center">
+            <SilentGrid item xs={12} md={4}>
               <TextField
                 fullWidth
                 placeholder="Search items..."
@@ -178,8 +196,8 @@ const StudentDashboard = () => {
                 size="small"
                 InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
               />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </SilentGrid>
+            <SilentGrid item xs={12} sm={6} md={3}>
               <TextField
                 select
                 fullWidth
@@ -193,8 +211,8 @@ const StudentDashboard = () => {
                   <MenuItem key={category} value={category}>{category}</MenuItem>
                 ))}
               </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            </SilentGrid>
+            <SilentGrid item xs={12} sm={6} md={3}>
               <TextField
                 select
                 fullWidth
@@ -210,8 +228,8 @@ const StudentDashboard = () => {
                 <MenuItem value="Returned">Returned</MenuItem>
                 <MenuItem value="Transferred to NUPD">Transferred to NUPD</MenuItem>
               </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
+            </SilentGrid>
+            <SilentGrid item xs={12} sm={6} md={2}>
               <TextField
                 select
                 fullWidth
@@ -225,8 +243,8 @@ const StudentDashboard = () => {
                 <MenuItem value="oldest">Oldest First</MenuItem>
                 <MenuItem value="alphabetical">A-Z</MenuItem>
               </TextField>
-            </Grid>
-          </Grid>
+            </SilentGrid>
+          </SilentGrid>
 
           <Tabs value={tabValue} onChange={handleTabChange} sx={{ mt: 3 }} textColor="primary" indicatorColor="primary">
             <Tab label={<Box sx={{ display: 'flex', alignItems: 'center' }}>All Items<Chip label={counts.all} size="small" sx={{ ml: 1 }} /></Box>} />
@@ -254,13 +272,17 @@ const StudentDashboard = () => {
             </Box>
           )}
           {!loading && !error && itemsToShow.length > 0 && (
-            <Grid container spacing={3} sx={{ mb: 5 }}>
+            <SilentGrid container spacing={3} sx={{ mb: 5 }}>
               {itemsToShow.map((item) => (
-                <Grid item xs={12} sm={6} md={4} key={item._id}>
-                  <LostItemCard item={item} />
-                </Grid>
+                <SilentGrid item xs={12} sm={6} md={4} key={item._id}>
+                  <LostItemCard 
+                    item={item} 
+                    isSelected={selectedItem && selectedItem._id === item._id}
+                    onClick={handleItemClick}
+                  />
+                </SilentGrid>
               ))}
-            </Grid>
+            </SilentGrid>
           )}
         </Box>
 

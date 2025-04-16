@@ -22,19 +22,38 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import CategoryIcon from "@mui/icons-material/Category";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
-import defaultItemImage from "../assets/default-item.png"; // Import your default image
+import CloseIcon from '@mui/icons-material/Close';
+import defaultItemImage from "../assets/default-item.png";
 
-const LostItemCard = ({ item }) => {
+// Import category icons
+import electronicsIcon from "../assets/gadget-icon.png";
+import bagsIcon from "../assets/bags-accessories-icon.png";
+import clothingIcon from "../assets/clothing-icon.png";
+import booksIcon from "../assets/books-icon.png";
+import idCardsIcon from "../assets/id-card-icon.png";
+import keysIcon from "../assets/keys-icon.png";
+import personalItemsIcon from "../assets/personal-items-icon.png";
+import petsIcon from "../assets/pets-icon.png";
+
+const LostItemCard = ({ item, isSelected = false, onClick }) => {
   const [expanded, setExpanded] = useState(false);
   const [showImageDialog, setShowImageDialog] = useState(false);
   
-  const handleExpandClick = () => {
+  const handleExpandClick = (e) => {
+    e.stopPropagation(); // Prevent triggering the card click
     setExpanded(!expanded);
   };
   
   const handleImageClick = (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent triggering the card click
     setShowImageDialog(true);
+  };
+
+  // Handle card click
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick(item);
+    }
   };
 
   // Format date for display
@@ -72,6 +91,30 @@ const LostItemCard = ({ item }) => {
     }
   };
 
+  // Get category icon based on item category
+  const getCategoryIcon = (category) => {
+    const lowerCategory = category?.toLowerCase() || '';
+    
+    if (lowerCategory.includes('electronic') || lowerCategory.includes('gadget') || lowerCategory.includes('device'))
+      return electronicsIcon;
+    if (lowerCategory.includes('bag') || lowerCategory.includes('accessorie'))
+      return bagsIcon;
+    if (lowerCategory.includes('cloth') || lowerCategory.includes('wear'))
+      return clothingIcon;
+    if (lowerCategory.includes('book') || lowerCategory.includes('stationery'))
+      return booksIcon;
+    if (lowerCategory.includes('id') || lowerCategory.includes('card'))
+      return idCardsIcon;
+    if (lowerCategory.includes('key') || lowerCategory.includes('lock'))
+      return keysIcon;
+    if (lowerCategory.includes('personal'))
+      return personalItemsIcon;
+    if (lowerCategory.includes('pet') || lowerCategory.includes('animal'))
+      return petsIcon;
+      
+    return null;
+  };
+
   // Color mapping for status
   const statusConfig = {
     "Pending": {
@@ -96,26 +139,34 @@ const LostItemCard = ({ item }) => {
     }
   };
 
+  const categoryIcon = getCategoryIcon(item.category);
+
   return (
     <>
       <Card
+        onClick={handleCardClick}
         sx={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
           borderRadius: "12px",
-          border: "1px solid #e5e7eb",
-          backgroundColor: "#ffffff",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.06)",
+          border: isSelected ? "2px solid #b00020" : "1px solid #e5e7eb",
+          backgroundColor: isSelected ? "#fef2f2" : "#ffffff",
+          boxShadow: isSelected 
+            ? "0 4px 12px rgba(176, 0, 32, 0.15)" 
+            : "0 4px 12px rgba(0, 0, 0, 0.06)",
           transition: "all 0.3s ease",
           height: "100%",
           width: "100%",
           mx: "auto",
           overflow: "visible", // Allow badge to overflow
           position: "relative",
+          cursor: "pointer",
           "&:hover": {
             transform: "translateY(-4px)",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)",
+            boxShadow: isSelected 
+              ? "0 8px 24px rgba(176, 0, 32, 0.2)" 
+              : "0 8px 24px rgba(0, 0, 0, 0.12)",
           },
         }}
       >
@@ -222,7 +273,20 @@ const LostItemCard = ({ item }) => {
                 color: "#4b5563" 
               }}
             >
-              <CategoryIcon sx={{ fontSize: "1rem", mr: 0.5 }} />
+              {categoryIcon ? (
+                <img 
+                  src={categoryIcon} 
+                  alt={item.category}
+                  style={{ 
+                    width: "16px", 
+                    height: "16px", 
+                    marginRight: "4px",
+                    objectFit: "contain"
+                  }} 
+                />
+              ) : (
+                <CategoryIcon sx={{ fontSize: "1rem", mr: 0.5 }} />
+              )}
               <Typography variant="body2">
                 {item.category}
               </Typography>
@@ -335,11 +399,29 @@ const LostItemCard = ({ item }) => {
         open={showImageDialog} 
         onClose={() => setShowImageDialog(false)}
         maxWidth="md"
+        onClick={(e) => e.stopPropagation()}
       >
         <DialogTitle sx={{ pb: 1 }}>
           {item.title}
         </DialogTitle>
         <DialogContent sx={{ p: 0, textAlign: "center" }}>
+          <IconButton
+            aria-label="close"
+            onClick={() => setShowImageDialog(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: 'white',
+              bgcolor: 'rgba(0,0,0,0.5)',
+              '&:hover': {
+                bgcolor: 'rgba(0,0,0,0.7)',
+              },
+              zIndex: 1
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
           <img 
             src={item.imageUrl || defaultItemImage} 
             alt={item.title}
