@@ -431,6 +431,11 @@ const LostItemsMap = forwardRef(({ items = [], selectedItem = null, onMarkerClic
                 <div>
                   <h3 style={{ margin: '0 0 5px 0', color: '#b00020' }}>{item.title}</h3>
                   <p style={{ margin: '0' }}>{item.description || 'No description available'}</p>
+                  {item.submittedBy && (
+                    <p style={{ margin: '5px 0 0 0', color: '#b00020', fontSize: '0.85rem', fontWeight: 500 }}>
+                      Reported by: {item.submittedBy.split('@')[0]}
+                    </p>
+                  )}
                   <p style={{ margin: '5px 0 0 0', color: '#666' }}>Status: {item.status}</p>
                   {item.category && <p style={{ margin: '5px 0 0 0', color: '#666' }}>Category: {item.category}</p>}
                   {item.locationName && <p style={{ margin: '5px 0 0 0', color: '#666' }}>Location: {item.locationName}</p>}

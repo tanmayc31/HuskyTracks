@@ -22,7 +22,7 @@ const upload = multer({ storage });
 // ✅ 1. Student reports lost item
 router.post("/", upload.single("image"), async (req, res) => {
   try {
-    const { title, description, coordinates, submittedBy } = req.body;
+    const { title, description, coordinates, submittedBy, category, locationName } = req.body;
     const imageUrl = req.file ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}` : null;
 
     // Parse coordinates from string to array
@@ -43,6 +43,8 @@ router.post("/", upload.single("image"), async (req, res) => {
       submittedBy,
       imageUrl,
       status: "Pending",
+      category,
+      locationName
     });
 
     await newItem.save();
@@ -68,22 +70,23 @@ router.get("/", async (req, res) => {
 
 // ✅ 3. Get lost items for supervisor
 router.get("/supervisor", async (req, res) => {
-  const { bounds } = req.query;
-  if (!bounds) {
-    return res.status(400).json({ message: "Map bounds are required" });
-  }
-
+  const { location } = req.query;
+  
   try {
-    // Parse bounds from string to object
-    const { north, south, east, west } = JSON.parse(bounds);
-
-    // Find items within the bounds
-    const items = await LostItem.find({
-      'coordinates.0': { $gte: west, $lte: east },
-      'coordinates.1': { $gte: south, $lte: north }
-    }).sort({ createdAt: -1 });
-
-    res.json(items);
+    // Find all items, but prioritize those in the supervisor's location
+    const items = await LostItem.find().sort({ createdAt: -1 });
+    
+    // Add a field to indicate if the item is in the supervisor's location
+    // (This is used for highlighting/filtering on the frontend)
+    const itemsWithLocationMatch = items.map(item => {
+      const isInSupervisorLocation = item.locationName === location;
+      return {
+        ...item.toObject(),
+        isInSupervisorLocation
+      };
+    });
+    
+    res.json(itemsWithLocationMatch);
   } catch (error) {
     console.error("❌ Error fetching supervisor items:", error);
     res.status(500).json({ message: "Failed to fetch items", error });

@@ -23,6 +23,7 @@ import {
   DialogActions,
   Alert,
   Divider,
+  IconButton,
 } from "@mui/material";
 import axios from "axios";
 import DashboardNavbar from "../components/DashboardNavbar";
@@ -35,7 +36,11 @@ import LocalPoliceIcon from "@mui/icons-material/LocalPolice";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import MapIcon from "@mui/icons-material/Map";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import defaultItemImage from "../assets/default-item.png";
+import LostItemsMap from "../components/LostItemsMap";
 
 const SupervisorDashboard = () => {
   // State management with stable references
@@ -54,6 +59,9 @@ const SupervisorDashboard = () => {
   const [actionSuccess, setActionSuccess] = useState("");
   const [actionError, setActionError] = useState("");
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [showMapView, setShowMapView] = useState(false);
+  const [selectedMapItem, setSelectedMapItem] = useState(null);
+  const [mapItems, setMapItems] = useState([]);
   
   // Get user from localStorage (once on component mount)
   const userString = localStorage.getItem("huskyUser");
@@ -89,6 +97,14 @@ const SupervisorDashboard = () => {
       applyFilters();
     }
   }, [searchTerm, statusFilter, tabValue, reports]);
+  
+  // Update map items when reports change
+  useEffect(() => {
+    if (reports.length > 0) {
+      // For map view, we use all items regardless of filter
+      setMapItems(reports);
+    }
+  }, [reports]);
 
   const fetchReports = async () => {
     setLoading(true);
@@ -99,12 +115,14 @@ const SupervisorDashboard = () => {
       );
       setReports(res.data || []);
       setFilteredReports(res.data || []);
+      setMapItems(res.data || []);
       setIsDataLoaded(true);
     } catch (err) {
       console.error("Failed to fetch reports:", err);
       setError("Failed to load reports. Please try again.");
       setReports([]);
       setFilteredReports([]);
+      setMapItems([]);
     } finally {
       setLoading(false);
     }
@@ -125,6 +143,17 @@ const SupervisorDashboard = () => {
   const handleRefresh = () => {
     setIsDataLoaded(false);
     fetchReports();
+  };
+  
+  // Toggle between map and list view
+  const toggleMapView = () => {
+    setShowMapView(prev => !prev);
+  };
+  
+  // Handle marker click on map
+  const handleMarkerClick = (item) => {
+    setSelectedMapItem(item);
+    // Auto-scroll to the details section if needed
   };
 
   // Apply all filters - moved to separate function
@@ -291,16 +320,30 @@ const SupervisorDashboard = () => {
               <Typography variant="subtitle1" sx={{ color: "#4b5563" }}>
                 Managing lost items at <strong>{assignedLocation}</strong>
               </Typography>
-              <Button 
-                startIcon={<RefreshIcon />}
-                onClick={handleRefresh}
-                sx={{ 
-                  color: "#374151",
-                  "&:hover": { backgroundColor: "#f3f4f6" }
-                }}
-              >
-                Refresh
-              </Button>
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button 
+                  startIcon={showMapView ? <FilterAltIcon /> : <MapIcon />}
+                  onClick={toggleMapView}
+                  variant="outlined"
+                  sx={{ 
+                    color: "#374151",
+                    borderColor: "#d1d5db",
+                    "&:hover": { backgroundColor: "#f3f4f6", borderColor: "#9ca3af" }
+                  }}
+                >
+                  {showMapView ? "List View" : "Map View"}
+                </Button>
+                <Button 
+                  startIcon={<RefreshIcon />}
+                  onClick={handleRefresh}
+                  sx={{ 
+                    color: "#374151",
+                    "&:hover": { backgroundColor: "#f3f4f6" }
+                  }}
+                >
+                  Refresh
+                </Button>
+              </Box>
             </Box>
           </Box>
 
@@ -518,8 +561,174 @@ const SupervisorDashboard = () => {
             </Tabs>
           </Paper>
           
+          {/* Map View */}
+          {showMapView && (
+            <Box sx={{ mb: 4 }}>
+              <Paper 
+                elevation={0}
+                sx={{
+                  borderRadius: 2,
+                  backgroundColor: "#fff",
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+                  border: "1px solid #edf2f7",
+                  overflow: "hidden",
+                }}
+              >
+                <Box sx={{ p: 2, borderBottom: "1px solid #edf2f7" }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#111827" }}>
+                    Lost Items Map
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Showing all {mapItems.length} items. Click on a marker to view details.
+                  </Typography>
+                </Box>
+                
+                <LostItemsMap 
+                  items={mapItems} 
+                  selectedItem={selectedMapItem}
+                  onMarkerClick={handleMarkerClick}
+                />
+                
+                {selectedMapItem && (
+                  <Box sx={{ p: 3, borderTop: "1px solid #edf2f7" }}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: "#111827" }}>
+                      {selectedMapItem.title}
+                    </Typography>
+                    
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6} md={8}>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Description:
+                        </Typography>
+                        <Typography paragraph>
+                          {selectedMapItem.description}
+                        </Typography>
+                        
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Reported by:
+                        </Typography>
+                        <Typography paragraph>
+                          {selectedMapItem.submittedBy}
+                        </Typography>
+                        
+                        {selectedMapItem.createdAt && (
+                          <>
+                            <Typography variant="body2" color="textSecondary" gutterBottom>
+                              Reported on:
+                            </Typography>
+                            <Typography paragraph>
+                              {new Date(selectedMapItem.createdAt).toLocaleString()}
+                            </Typography>
+                          </>
+                        )}
+                        
+                        {selectedMapItem.category && (
+                          <>
+                            <Typography variant="body2" color="textSecondary" gutterBottom>
+                              Category:
+                            </Typography>
+                            <Typography paragraph>
+                              {selectedMapItem.category}
+                            </Typography>
+                          </>
+                        )}
+                        
+                        {selectedMapItem.locationName && (
+                          <>
+                            <Typography variant="body2" color="textSecondary" gutterBottom>
+                              Location:
+                            </Typography>
+                            <Typography paragraph>
+                              {selectedMapItem.locationName}
+                            </Typography>
+                          </>
+                        )}
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          <Chip
+                            label={selectedMapItem.status}
+                            sx={{
+                              color: getStatusColor(selectedMapItem.status).text,
+                              backgroundColor: getStatusColor(selectedMapItem.status).bg,
+                              borderRadius: "6px",
+                              fontWeight: 600,
+                              fontSize: "0.875rem",
+                              border: `1px solid ${getStatusColor(selectedMapItem.status).border}`,
+                            }}
+                          />
+                          
+                          {selectedMapItem.status !== "Returned" && selectedMapItem.status !== "Transferred to NUPD" && (
+                            <>
+                              {selectedMapItem.status === "Matched" && (
+                                <Button
+                                  fullWidth
+                                  variant="contained"
+                                  startIcon={<MailOutlineIcon />}
+                                  onClick={() => handleOpenEmailDialog(selectedMapItem)}
+                                  sx={{
+                                    backgroundColor: "#4f46e5",
+                                    color: "#fff",
+                                    "&:hover": { backgroundColor: "#4338ca" },
+                                  }}
+                                >
+                                  Send Email
+                                </Button>
+                              )}
+                              
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={() => handleOpenActionDialog(selectedMapItem, "Matched")}
+                                sx={{
+                                  backgroundColor: "#3b82f6",
+                                  color: "#fff",
+                                  "&:hover": { backgroundColor: "#2563eb" },
+                                }}
+                                disabled={selectedMapItem.status === "Matched"}
+                              >
+                                Mark as Matched
+                              </Button>
+                              
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={() => handleOpenActionDialog(selectedMapItem, "Returned")}
+                                sx={{
+                                  backgroundColor: "#22c55e",
+                                  color: "#fff",
+                                  "&:hover": { backgroundColor: "#16a34a" },
+                                }}
+                              >
+                                Mark as Returned
+                              </Button>
+                              
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={() => handleOpenActionDialog(selectedMapItem, "Transferred to NUPD")}
+                                sx={{
+                                  backgroundColor: "#64748b",
+                                  color: "#fff",
+                                  "&:hover": { backgroundColor: "#475569" },
+                                }}
+                              >
+                                Transfer to NUPD
+                              </Button>
+                            </>
+                          )}
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+              </Paper>
+            </Box>
+          )}
+          
           {/* Content Area - Fixed Height to Prevent Layout Shifts */}
-          <Box sx={{ minHeight: 500 }}>
+          <Box sx={{ minHeight: 500, display: showMapView ? 'none' : 'block' }}>
             {/* Loading States */}
             {loading && (
               <Box sx={{ display: "flex", justifyContent: "center", my: 5 }}>

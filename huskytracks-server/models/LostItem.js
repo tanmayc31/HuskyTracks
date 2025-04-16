@@ -23,6 +23,8 @@ const lostItemSchema = new mongoose.Schema(
       default: "Pending"
     },      
     submittedBy: String,
+    category: String,
+    locationName: String,
   },
   { timestamps: true }
 );

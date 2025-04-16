@@ -42,6 +42,7 @@ const ReportLostItem = () => {
     category: "",
     description: "",
     coordinates: null,
+    locationName: "",
     image: null,
   });
   
@@ -51,6 +52,7 @@ const ReportLostItem = () => {
     category: "",
     description: "",
     coordinates: "",
+    locationName: "",
   });
   
   // Form touched state
@@ -59,6 +61,7 @@ const ReportLostItem = () => {
     category: false,
     description: false,
     coordinates: false,
+    locationName: false,
   });
   
   const [preview, setPreview] = useState(null);
@@ -90,12 +93,23 @@ const ReportLostItem = () => {
   };
 
   // Handle location selection
-  const handleLocationSelect = (coordinates) => {
-    setForm(prev => ({ ...prev, coordinates }));
+  const handleLocationSelect = (coordinates, locationName) => {
+    setForm(prev => ({ 
+      ...prev, 
+      coordinates,
+      locationName: locationName || "Custom Location"
+    }));
+    
     if (!touched.coordinates) {
-      setTouched(prev => ({ ...prev, coordinates: true }));
+      setTouched(prev => ({ 
+        ...prev, 
+        coordinates: true,
+        locationName: true
+      }));
     }
+    
     validateField('coordinates', coordinates);
+    validateField('locationName', locationName);
   };
 
   // Handle blur event for validation
@@ -138,6 +152,12 @@ const ReportLostItem = () => {
         }
         break;
         
+      case "locationName":
+        if (!value.trim()) {
+          error = "Location name is required";
+        }
+        break;
+        
       default:
         break;
     }
@@ -151,7 +171,7 @@ const ReportLostItem = () => {
     let isValid = true;
     
     // Validate each field
-    for (const field of ["title", "category", "description", "coordinates"]) {
+    for (const field of ["title", "category", "description", "coordinates", "locationName"]) {
       const error = validateField(field, form[field]);
       if (error) isValid = false;
     }
@@ -206,6 +226,7 @@ const ReportLostItem = () => {
       formData.append("category", form.category);
       formData.append("description", form.description);
       formData.append("coordinates", JSON.stringify(form.coordinates));
+      formData.append("locationName", form.locationName);
       
       // Append image if provided, otherwise backend will use default
       if (form.image) {
@@ -219,7 +240,7 @@ const ReportLostItem = () => {
       });
 
       setSuccess("Lost item reported successfully! You will be notified if someone finds it.");
-      setForm({ title: "", category: "", description: "", coordinates: null, image: null });
+      setForm({ title: "", category: "", description: "", coordinates: null, locationName: "", image: null });
       setPreview(null);
       
       // After 2 seconds, redirect to dashboard

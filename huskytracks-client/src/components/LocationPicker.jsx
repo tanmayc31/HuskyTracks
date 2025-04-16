@@ -48,6 +48,40 @@ const LocationPicker = ({ onLocationSelect, initialCoordinates }) => {
   const [markerPosition, setMarkerPosition] = useState(
     initialCoordinates ? formatCoordinates(initialCoordinates) : NEU_CENTER
   );
+  
+  // Find the closest known location to get its name
+  const findClosestLocation = (position) => {
+    // Skip if no position
+    if (!position) return null;
+    
+    // Calculate distance between two points
+    const calculateDistance = (point1, point2) => {
+      const latDiff = point1[0] - point2[0];
+      const lngDiff = point1[1] - point2[1];
+      return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+    };
+    
+    // Find closest location
+    let closestLocation = null;
+    let minDistance = Number.MAX_VALUE;
+    
+    NEU_LOCATIONS.forEach(location => {
+      const distance = calculateDistance(position, location.coordinates);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestLocation = location;
+      }
+    });
+    
+    // If the point is very close to a known location (within ~50 meters)
+    // 0.0005 degrees is approximately 50 meters
+    if (minDistance < 0.0005) {
+      return closestLocation.name;
+    }
+    
+    // Otherwise, it's a custom location
+    return "Custom Location";
+  };
 
   useEffect(() => {
     // Fix Leaflet's default icon path issues
@@ -62,8 +96,15 @@ const LocationPicker = ({ onLocationSelect, initialCoordinates }) => {
 
   const handlePositionChange = (newPosition) => {
     setMarkerPosition(newPosition);
+    
     // Convert back to [longitude, latitude] for our database
-    onLocationSelect([newPosition[1], newPosition[0]]);
+    const dbCoordinates = [newPosition[1], newPosition[0]];
+    
+    // Find the location name
+    const locationName = findClosestLocation(newPosition);
+    
+    // Pass both coordinates and location name back to parent
+    onLocationSelect(dbCoordinates, locationName);
   };
 
   return (
@@ -100,6 +141,11 @@ const LocationPicker = ({ onLocationSelect, initialCoordinates }) => {
       <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
         Or click on a pre-marked campus location
       </Typography>
+      {markerPosition && (
+        <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
+          Selected location: <span style={{ color: '#b00020' }}>{findClosestLocation(markerPosition)}</span>
+        </Typography>
+      )}
     </Box>
   );
 };
